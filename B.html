@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bingo familiar</title>
+<style>
+  :root{
+    --ink:#182233;
+    --muted:#6A7686;
+    --bg:#EEF1F4;
+    --surface:#FFFFFF;
+    --surface-2:#F7F9FB;
+    --line:#DCE2E9;
+    --accent:#E14B33;
+    --accent-dark:#B8351F;
+    --gold:#F2B807;
+    --teal:#178C82;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(24,34,51,.06), 0 8px 24px rgba(24,34,51,.06);
+    font-synthesis-weight:none;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.45;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:18px 16px 64px;}
+
+  .eyebrow{
+    font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 4px;
+  }
+
+  /* ---- Top bar ---- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin-bottom:16px;flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:baseline;gap:10px;}
+  .brand h1{
+    margin:0;font-size:26px;font-weight:800;letter-spacing:-.01em;
+  }
+  .brand .dot{color:var(--accent);}
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+
+  .segment{
+    display:inline-flex;background:var(--surface);border:1px solid var(--line);
+    border-radius:999px;padding:3px;box-shadow:var(--shadow);
+  }
+  .segment button{
+    border:0;background:transparent;color:var(--muted);
+    font:inherit;font-weight:700;font-size:13px;
+    padding:7px 14px;border-radius:999px;cursor:pointer;min-height:34px;
+  }
+  .segment button[aria-pressed="true"]{background:var(--ink);color:#fff;}
+
+  .btn{
+    border:1px solid var(--line);background:var(--surface);color:var(--ink);
+    font:inherit;font-weight:700;font-size:13px;cursor:pointer;
+    padding:9px 14px;border-radius:10px;min-height:44px;box-shadow:var(--shadow);
+  }
+  .btn:hover{border-color:#C4CCD6;}
+  .btn:active{transform:translateY(1px);}
+  .btn-ghost{background:transparent;box-shadow:none;border-color:transparent;color:var(--muted);}
+  .btn-ghost:hover{color:var(--ink);border-color:var(--line);background:var(--surface);}
+  .btn-accent{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn-accent:hover{background:var(--accent-dark);border-color:var(--accent-dark);}
+  .btn-danger{color:var(--accent-dark);}
+  .btn-danger:hover{border-color:var(--accent);background:#FDECE8;}
+
+  /* ---- Storage banner ---- */
+  .banner{
+    display:none;background:#FFF6E5;border:1px solid #F2D58A;color:#7A5A05;
+    padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:14px;
+  }
+  .banner.show{display:block;}
+
+  /* ---- Hero: la bola ---- */
+  .hero{
+    display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;box-shadow:var(--shadow);margin-bottom:16px;
+  }
+  .ball{
+    position:relative;width:118px;height:118px;border-radius:50%;
+    display:grid;place-items:center;flex:none;
+    background:
+      radial-gradient(circle at 34% 30%, #FF7E68 0%, var(--accent) 42%, var(--accent-dark) 100%);
+    box-shadow:inset 0 -8px 14px rgba(120,20,8,.35), 0 6px 16px rgba(225,75,51,.28);
+    color:#fff;
+  }
+  .ball::after{ /* brillo */
+    content:"";position:absolute;top:14px;left:20px;width:34px;height:22px;
+    border-radius:50%;background:rgba(255,255,255,.5);filter:blur(3px);
+  }
+  .ball.empty{
+    background:var(--surface-2);box-shadow:inset 0 0 0 2px var(--line);color:var(--muted);
+  }
+  .ball.empty::after{display:none;}
+  .ball .num{
+    font-size:52px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;
+    position:relative;z-index:1;
+  }
+  .ball.empty .num{font-size:40px;}
+  @keyframes pop{0%{transform:scale(.7);}60%{transform:scale(1.08);}100%{transform:scale(1);}}
+  .ball.pop{animation:pop .28s ease-out;}
+
+  .hero-meta .eyebrow{margin-bottom:6px;}
+  .stats{display:flex;gap:22px;flex-wrap:wrap;margin-top:2px;}
+  .stat .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+  .stat .v{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;}
+  .stat.teal .v{color:var(--teal);}
+
+  /* ---- Board ---- */
+  section{margin-bottom:22px;}
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 2px 10px;}
+  .section-head h2{margin:0;font-size:15px;font-weight:800;letter-spacing:.01em;}
+  .hint{font-size:12px;color:var(--muted);}
+
+  .board{display:flex;gap:8px;align-items:flex-start;}
+  .group{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:6px;}
+  .group-head{
+    height:32px;border-radius:9px;display:grid;place-items:center;
+    background:var(--ink);color:#fff;font-weight:800;font-size:15px;letter-spacing:.02em;
+  }
+  .group-cells{display:grid;gap:6px;}
+  .board-divider{flex:0 0 1px;align-self:stretch;background:#C4CCD6;border-radius:1px;}
+  .cell{
+    width:100%;aspect-ratio:1/1;border:1px solid var(--line);background:var(--surface);
+    color:var(--ink);border-radius:9px;font:inherit;font-weight:700;font-size:14px;
+    font-variant-numeric:tabular-nums;cursor:pointer;
+    display:grid;place-items:center;transition:transform .04s ease;
+  }
+  .cell:hover{border-color:#C4CCD6;}
+  .cell:active{transform:scale(.94);}
+  .cell.called{
+    background:var(--accent);border-color:var(--accent);color:#fff;
+    box-shadow:inset 0 -3px 6px rgba(120,20,8,.25);
+  }
+  .cell.last{box-shadow:0 0 0 3px var(--gold), inset 0 -3px 6px rgba(120,20,8,.25);}
+
+  /* ---- Winners ---- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);}
+  .win-form{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;padding:14px;}
+  .field label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+  .field input{
+    width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;
+    font:inherit;font-size:15px;background:var(--surface-2);color:var(--ink);min-height:44px;
+  }
+  .field input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);background:#fff;}
+  .win-form .submit{align-self:end;}
+
+  .win-list{list-style:none;margin:0;padding:0;border-top:1px solid var(--line);}
+  .win-list li{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line);}
+  .win-list li:last-child{border-bottom:0;}
+  .win-info{min-width:0;flex:1;}
+  .win-name{font-weight:700;}
+  .win-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:3px;}
+  .win-pattern{
+    font-size:12px;font-weight:700;color:var(--accent-dark);
+    background:#FDECE8;border:1px solid #F6CFC6;border-radius:999px;padding:2px 9px;
+  }
+  .win-prize{color:var(--muted);font-size:14px;}
+  .win-prize.empty{font-style:italic;}
+  .win-actions{display:flex;gap:6px;flex:none;}
+  .win-edit{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:8px;flex:1;}
+  .win-edit input{border:1px solid var(--line);border-radius:9px;padding:9px 10px;font:inherit;min-height:40px;background:#fff;}
+
+  .empty-note{padding:18px 14px;color:var(--muted);font-size:14px;border-top:1px solid var(--line);}
+
+  .footer-actions{margin-top:28px;display:flex;justify-content:flex-end;}
+
+  /* ---- Modal ---- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(24,34,51,.42);display:none;
+    place-items:center;padding:20px;z-index:50;
+  }
+  .overlay.show{display:grid;}
+  .modal{
+    background:var(--surface);border-radius:16px;max-width:380px;width:100%;
+    padding:22px;box-shadow:0 20px 60px rgba(24,34,51,.3);
+  }
+  .modal h3{margin:0 0 8px;font-size:18px;}
+  .modal p{margin:0 0 18px;color:var(--muted);}
+  .modal .row{display:flex;justify-content:flex-end;gap:10px;}
+
+  @media (max-width:560px){
+    .hero{grid-template-columns:1fr;text-align:left;}
+    .ball{width:96px;height:96px;}
+    .ball .num{font-size:42px;}
+    .win-form{grid-template-columns:1fr;}
+    .win-form .submit{justify-self:start;}
+    .win-edit{grid-template-columns:1fr;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .ball.pop{animation:none;}
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <h1>Bingo<span class="dot">.</span></h1>
+      <span class="hint" id="modeHint"></span>
+    </div>
+    <div class="controls">
+      <div class="segment" role="group" aria-label="Cantidad de números">
+        <button id="mode90" aria-pressed="true">90 bolas</button>
+        <button id="mode75" aria-pressed="false">75 bolas</button>
+      </div>
+      <button class="btn btn-ghost btn-danger" id="resetNumbers">Reiniciar números</button>
+    </div>
+  </div>
+
+  <div class="banner" id="storageBanner">
+    No se puede guardar en este navegador. El bingo funciona igual, pero se perderá al cerrar la pestaña.
+  </div>
+
+  <div class="hero">
+    <div class="ball empty" id="ball" aria-live="polite">
+      <span class="num" id="lastNumber">—</span>
+    </div>
+    <div class="hero-meta">
+      <p class="eyebrow">Último número</p>
+      <div class="stats">
+        <div class="stat"><div class="k">Cantados</div><div class="v" id="countCalled">0</div></div>
+        <div class="stat teal"><div class="k">Restantes</div><div class="v" id="countLeft">90</div></div>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <h2>Tablero</h2>
+      <span class="hint">Tocá un número para cantarlo. Tocalo otra vez para corregir.</span>
+    </div>
+    <div class="board" id="board"></div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>Ganadores</h2></div>
+    <div class="card">
+      <div class="win-form">
+        <div class="field">
+          <label for="winName">Nombre</label>
+          <input id="winName" type="text" placeholder="Quién ganó" autocomplete="off" maxlength="60">
+        </div>
+        <div class="field">
+          <label for="winPattern">Figura</label>
+          <input id="winPattern" type="text" placeholder="Línea, cartón completo…" autocomplete="off" maxlength="60">
+        </div>
+        <div class="field">
+          <label for="winPrize">Premio</label>
+          <input id="winPrize" type="text" placeholder="Qué se llevó" autocomplete="off" maxlength="80">
+        </div>
+        <div class="submit"><button class="btn btn-accent" id="addWinner">Agregar</button></div>
+      </div>
+      <ul class="win-list" id="winList"></ul>
+      <div class="empty-note" id="winEmpty">Todavía no registraste ganadores.</div>
+    </div>
+  </section>
+
+  <div class="footer-actions">
+    <button class="btn btn-ghost btn-danger" id="resetAll">Reinicio total</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3 id="mTitle"></h3>
+    <p id="mBody"></p>
+    <div class="row">
+      <button class="btn btn-ghost" id="mCancel">Cancelar</button>
+      <button class="btn btn-accent" id="mOk">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------------- Almacenamiento (versionado + fallback en memoria) ---------------- */
+const STORAGE_KEY = "bingo.state";
+const SCHEMA_VERSION = 1;
+
+function defaultState(){
+  return { schemaVersion: SCHEMA_VERSION, settings:{ maxNumber:90 }, calledNumbers:[], winners:[] };
+}
+
+function migrate(raw){
+  // Mapa de migraciones: from -> función que devuelve el estado en la versión siguiente.
+  const steps = {
+    // 0: (s) => ({ ...s, schemaVersion:1, nuevoCampo:[] }),
+  };
+  let s = raw;
+  let v = typeof s.schemaVersion === "number" ? s.schemaVersion : 0;
+  while (v < SCHEMA_VERSION && steps[v]){ s = steps[v](s); v = s.schemaVersion; }
+  s.schemaVersion = SCHEMA_VERSION;
+  return s;
+}
+
+function sanitize(s){
+  const base = defaultState();
+  if (!s || typeof s !== "object") return base;
+  const max = s.settings && s.settings.maxNumber === 75 ? 75 : 90;
+  const called = Array.isArray(s.calledNumbers)
+    ? [...new Set(s.calledNumbers.filter(n => Number.isInteger(n) && n>=1 && n<=max))]
+    : [];
+  const winners = Array.isArray(s.winners) ? s.winners.filter(w => w && typeof w.name === "string").map(w => ({
+    id: typeof w.id === "string" ? w.id : uid(),
+    name: String(w.name).slice(0,60),
+    prize: typeof w.prize === "string" ? w.prize.slice(0,80) : "",
+    pattern: typeof w.pattern === "string" ? w.pattern.slice(0,60) : "",
+    at: typeof w.at === "string" ? w.at : new Date().toISOString()
+  })) : [];
+  return { schemaVersion:SCHEMA_VERSION, settings:{ maxNumber:max }, calledNumbers:called, winners };
+}
+
+const storage = {
+  available:true,
+  load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return defaultState();
+      return sanitize(migrate(JSON.parse(raw)));
+    }catch(e){
+      try{ localStorage.removeItem(STORAGE_KEY); }catch(_){}
+      // Si localStorage falla por completo, marcamos no disponible.
+      try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); }
+      catch(_){ this.available=false; }
+      return defaultState();
+    }
+  },
+  save(s){
+    if(!this.available) return;
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+    catch(e){ this.available=false; showStorageBanner(); }
+  }
+};
+
+function uid(){
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,8);
+}
+
+/* ---------------- Estado ---------------- */
+let state = storage.load();
+let editingId = null;
+const persist = () => storage.save(state);
+
+/* ---------------- Referencias ---------------- */
+const $ = (id) => document.getElementById(id);
+const board = $("board"), ball = $("ball"), lastNumberEl = $("lastNumber");
+const countCalled = $("countCalled"), countLeft = $("countLeft");
+const winList = $("winList"), winEmpty = $("winEmpty");
+const modeHint = $("modeHint");
+
+/* ---------------- Modal de confirmación ---------------- */
+function ask(title, body, okLabel){
+  return new Promise((resolve)=>{
+    const ov = $("overlay");
+    $("mTitle").textContent = title;
+    $("mBody").textContent = body;
+    $("mOk").textContent = okLabel || "Confirmar";
+    ov.classList.add("show");
+    const close = (val)=>{ ov.classList.remove("show"); $("mOk").onclick=null; $("mCancel").onclick=null; resolve(val); };
+    $("mOk").onclick = ()=>close(true);
+    $("mCancel").onclick = ()=>close(false);
+  });
+}
+
+/* ---------------- Render ---------------- */
+function renderHeader(){
+  const max = state.settings.maxNumber;
+  $("mode90").setAttribute("aria-pressed", max===90 ? "true":"false");
+  $("mode75").setAttribute("aria-pressed", max===75 ? "true":"false");
+  modeHint.textContent = "1–" + max;
+}
+
+function renderStats(){
+  const max = state.settings.maxNumber;
+  const called = state.calledNumbers.length;
+  countCalled.textContent = called;
+  countLeft.textContent = max - called;
+  const last = called ? state.calledNumbers[state.calledNumbers.length-1] : null;
+  if(last==null){
+    ball.classList.add("empty");
+    lastNumberEl.textContent = "—";
+  }else{
+    ball.classList.remove("empty");
+    lastNumberEl.textContent = last;
+  }
+}
+
+function popBall(){
+  ball.classList.remove("pop"); void ball.offsetWidth; ball.classList.add("pop");
+}
+
+function getGroups(max){
+  if(max===75){
+    return [
+      {label:"B", start:1,  end:15},
+      {label:"I", start:16, end:30},
+      {label:"N", start:31, end:45},
+      {label:"G", start:46, end:60},
+      {label:"O", start:61, end:75},
+    ];
+  }
+  // 90: columnas por decenas (1–10, 11–20, … 81–90)
+  const groups = [];
+  for(let s=1;s<=max;s+=10) groups.push({label:"", start:s, end:Math.min(s+9,max)});
+  return groups;
+}
+
+function renderBoard(){
+  const max = state.settings.maxNumber;
+  const called = new Set(state.calledNumbers);
+  const last = state.calledNumbers[state.calledNumbers.length-1];
+  const groups = getGroups(max);
+  const cols = max===75 ? 3 : 1;          // tres columnas por letra en modo 75
+  const frag = document.createDocumentFragment();
+  groups.forEach((g, gi)=>{
+    const group = document.createElement("div");
+    group.className = "group";
+    if(g.label){
+      const h = document.createElement("div");
+      h.className = "group-head";
+      h.textContent = g.label;
+      group.appendChild(h);
+    }
+    const cellsWrap = document.createElement("div");
+    cellsWrap.className = "group-cells";
+    cellsWrap.style.gridTemplateColumns = "repeat(" + cols + ",1fr)";
+    for(let n=g.start;n<=g.end;n++){
+      const b = document.createElement("button");
+      b.className = "cell" + (called.has(n) ? " called":"") + (n===last ? " last":"");
+      b.textContent = String(n);
+      b.setAttribute("aria-pressed", called.has(n) ? "true":"false");
+      b.addEventListener("click", ()=>toggleNumber(n));
+      cellsWrap.appendChild(b);
+    }
+    group.appendChild(cellsWrap);
+    frag.appendChild(group);
+    if(gi < groups.length-1){
+      const divider = document.createElement("div");
+      divider.className = "board-divider";
+      frag.appendChild(divider);
+    }
+  });
+  board.replaceChildren(frag);
+}
+
+function renderWinners(){
+  winList.replaceChildren();
+  winEmpty.style.display = state.winners.length ? "none" : "block";
+  state.winners.forEach(w=>{
+    const li = document.createElement("li");
+    if(editingId === w.id){
+      const box = document.createElement("div"); box.className="win-edit";
+      const n = document.createElement("input"); n.value=w.name; n.maxLength=60; n.placeholder="Nombre";
+      const f = document.createElement("input"); f.value=w.pattern||""; f.maxLength=60; f.placeholder="Figura";
+      const p = document.createElement("input"); p.value=w.prize; p.maxLength=80; p.placeholder="Premio";
+      box.append(n,f,p);
+      const actions = document.createElement("div"); actions.className="win-actions";
+      const save = document.createElement("button"); save.className="btn btn-accent"; save.textContent="Guardar";
+      save.addEventListener("click", ()=>{
+        const name = n.value.trim();
+        if(!name){ n.focus(); return; }
+        w.name = name; w.pattern = f.value.trim(); w.prize = p.value.trim(); editingId=null; persist(); renderWinners();
+      });
+      const cancel = document.createElement("button"); cancel.className="btn btn-ghost"; cancel.textContent="Cancelar";
+      cancel.addEventListener("click", ()=>{ editingId=null; renderWinners(); });
+      actions.append(save,cancel);
+      li.append(box,actions);
+    }else{
+      const info = document.createElement("div"); info.className="win-info";
+      const nm = document.createElement("div"); nm.className="win-name"; nm.textContent=w.name;
+      const meta = document.createElement("div"); meta.className="win-meta";
+      if(w.pattern){
+        const pat = document.createElement("span"); pat.className="win-pattern"; pat.textContent=w.pattern;
+        meta.appendChild(pat);
+      }
+      const pz = document.createElement("span"); pz.className="win-prize"+(w.prize?"":" empty");
+      pz.textContent = w.prize || "Sin premio anotado";
+      meta.appendChild(pz);
+      info.append(nm,meta);
+      const actions = document.createElement("div"); actions.className="win-actions";
+      const edit = document.createElement("button"); edit.className="btn btn-ghost"; edit.textContent="Editar";
+      edit.addEventListener("click", ()=>{ editingId=w.id; renderWinners(); });
+      const del = document.createElement("button"); del.className="btn btn-ghost btn-danger"; del.textContent="Eliminar";
+      del.addEventListener("click", async ()=>{
+        const ok = await ask("Eliminar ganador", `¿Quitar a ${w.name} de la lista?`, "Eliminar");
+        if(ok){ state.winners = state.winners.filter(x=>x.id!==w.id); persist(); renderWinners(); }
+      });
+      actions.append(edit,del);
+      li.append(info,actions);
+    }
+    winList.appendChild(li);
+  });
+}
+
+function renderAll(){ renderHeader(); renderStats(); renderBoard(); renderWinners(); }
+
+/* ---------------- Acciones ---------------- */
+function toggleNumber(n){
+  const i = state.calledNumbers.indexOf(n);
+  if(i===-1){ state.calledNumbers.push(n); popBall(); }
+  else { state.calledNumbers.splice(i,1); }
+  persist(); renderStats(); renderBoard();
+}
+
+async function setMode(max){
+  if(state.settings.maxNumber===max) return;
+  if(state.calledNumbers.length){
+    const ok = await ask("Cambiar de modalidad",
+      "Vas a pasar a "+max+" bolas y se reinician los números cantados. Los ganadores se conservan.","Cambiar");
+    if(!ok){ renderHeader(); return; }
+  }
+  state.settings.maxNumber = max;
+  state.calledNumbers = [];
+  persist(); renderAll();
+}
+
+function addWinner(){
+  const nameEl = $("winName"), patternEl = $("winPattern"), prizeEl = $("winPrize");
+  const name = nameEl.value.trim();
+  if(!name){ nameEl.focus(); return; }
+  state.winners.push({
+    id:uid(),
+    name:name.slice(0,60),
+    pattern:patternEl.value.trim().slice(0,60),
+    prize:prizeEl.value.trim().slice(0,80),
+    at:new Date().toISOString()
+  });
+  nameEl.value=""; patternEl.value=""; prizeEl.value=""; nameEl.focus();
+  persist(); renderWinners();
+}
+
+function showStorageBanner(){ $("storageBanner").classList.add("show"); }
+
+/* ---------------- Eventos ---------------- */
+$("mode90").addEventListener("click", ()=>setMode(90));
+$("mode75").addEventListener("click", ()=>setMode(75));
+$("addWinner").addEventListener("click", addWinner);
+$("winPrize").addEventListener("keydown", e=>{ if(e.key==="Enter") addWinner(); });
+$("winName").addEventListener("keydown", e=>{ if(e.key==="Enter") $("winPattern").focus(); });
+$("winPattern").addEventListener("keydown", e=>{ if(e.key==="Enter") $("winPrize").focus(); });
+
+$("resetNumbers").addEventListener("click", async ()=>{
+  if(!state.calledNumbers.length) return;
+  const ok = await ask("Reiniciar números","Se borran todos los números cantados. Los ganadores se conservan.","Reiniciar");
+  if(ok){ state.calledNumbers=[]; persist(); renderStats(); renderBoard(); }
+});
+
+$("resetAll").addEventListener("click", async ()=>{
+  const ok = await ask("Reinicio total","Se borran los números cantados y todos los ganadores. No se puede deshacer.","Borrar todo");
+  if(ok){ state = defaultState(); editingId=null; persist(); renderAll(); }
+});
+
+/* ---------------- Init ---------------- */
+if(!storage.available) showStorageBanner();
+renderAll();
+</script>
+</body>
+</html>
